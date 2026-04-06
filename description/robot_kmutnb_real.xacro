@@ -1,0 +1,219 @@
+<?xml version="1.0"?>
+<robot name="agv_with_casters" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    ============================================================
+    robot_kmutnb.xacro  —  AMR KMUTNB
+    ============================================================
+    Pass  use_sim:=true   for Gazebo (GazeboSimSystem)
+    Pass  use_sim:=false  for real robot (AMRSystemHardware)
+
+    Example:
+      xacro robot_kmutnb.xacro use_sim:=false
+    ============================================================
+  -->
+  <xacro:arg name="use_sim" default="false"/>
+
+  <!-- ================= inertia macro ================= -->
+  <xacro:macro name="inertial_cylinder" params="mass length radius">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia
+        ixx="${(1/12) * mass * (3*radius*radius + length*length)}"
+        ixy="0.0" ixz="0.0"
+        iyy="${(1/12) * mass * (3*radius*radius + length*length)}"
+        iyz="0.0"
+        izz="${(1/2) * mass * (radius*radius)}" />
+    </inertial>
+  </xacro:macro>
+
+  <!-- ================= materials ================= -->
+  <material name="amr_blue">
+    <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+  </material>
+
+  <!-- ================= base_link ================= -->
+  <link name="base_link"/>
+
+  <!-- ================= chassis ================= -->
+  <joint name="base_to_chassis" type="fixed">
+    <parent link="base_link"/>
+    <child link="chassis_link"/>
+  </joint>
+
+  <link name="chassis_link">
+    <visual>
+      <geometry>
+        <mesh filename="package://robot_kmutnb/meshes/base_link.STL"/>
+      </geometry>
+      <material name="amr_blue"/>
+    </visual>
+    <collision>
+      <geometry><box size="0.900 0.590 0.24"/></geometry>
+      <origin xyz="0 0 0.12"/>
+    </collision>
+    <inertial>
+      <mass value="20.0"/>
+      <origin xyz="0 0 0.12"/>
+      <inertia ixx="1.2" ixy="0.0" ixz="0.0" iyy="2.0" iyz="0.0" izz="2.5"/>
+    </inertial>
+  </link>
+
+  <gazebo reference="chassis_link">
+    <visual>
+      <material>
+        <diffuse>0.2 0.2 0.2 1</diffuse>
+        <specular>0.2 0.2 0.2 1</specular>
+      </material>
+    </visual>
+  </gazebo>
+
+  <!-- ================= caster macro ================= -->
+  <xacro:macro name="caster" params="name mesh_file x y">
+    <link name="${name}_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="1.5708 0 3.1415926535897931"/>
+        <geometry>
+          <mesh filename="package://robot_kmutnb/meshes/${mesh_file}"/>
+        </geometry>
+        <material name="amr_blue"/>
+      </visual>
+      <collision>
+        <origin xyz="0 0 -0.0435" rpy="0 0 0"/>
+        <geometry><sphere radius="0.0315"/></geometry>
+      </collision>
+      <inertial>
+        <mass value="0.3"/>
+        <inertia ixx="0.0001" ixy="0.0" ixz="0.0"
+                 iyy="0.0001" iyz="0.0" izz="0.0001"/>
+      </inertial>
+    </link>
+    <joint name="${name}_joint" type="fixed">
+      <parent link="chassis_link"/>
+      <child link="${name}_link"/>
+      <origin xyz="${x} ${y} 0"/>
+    </joint>
+    <gazebo reference="${name}_link">
+      <visual>
+        <material>
+          <diffuse>1.0 0.0 0.0 1</diffuse>
+          <specular>0.5 0.5 0.5 1</specular>
+        </material>
+      </visual>
+      <mu1>0.1</mu1> <mu2>0.1</mu2>
+    </gazebo>
+  </xacro:macro>
+
+  <!-- ================= casters ================= -->
+  <xacro:caster name="caster_fr" mesh_file="CFR_Link.STL" x="0.26248"  y="-0.17556"/>
+  <xacro:caster name="caster_fl" mesh_file="CFL_Link.STL" x="0.26248"  y="0.17556"/>
+  <xacro:caster name="caster_rr" mesh_file="CBR_Link.STL" x="-0.26248" y="-0.17556"/>
+  <xacro:caster name="caster_rl" mesh_file="CBL_Link.STL" x="-0.26248" y="0.17556"/>
+
+  <!-- ================= right wheel ================= -->
+  <!--
+    TRACK_WIDTH = 0.590 m (physical measurement used in firmware)
+    So each wheel is offset 0.295 m from centre.
+    NOTE: Original URDF used 0.2397 — that was wrong (didn't match firmware).
+          Fixed here to 0.295.
+  -->
+  <link name="right_wheel">
+    <visual>
+      <geometry>
+        <mesh filename="package://robot_kmutnb/meshes/R_Link.STL"/>
+      </geometry>
+      <material name="amr_blue"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+      <geometry><cylinder radius="0.075" length="0.05"/></geometry>
+    </collision>
+    <xacro:inertial_cylinder mass="0.5" length="0.05" radius="0.075"/>
+  </link>
+
+  <joint name="right_wheel_joint" type="continuous">
+    <parent link="chassis_link"/>
+    <child link="right_wheel"/>
+    <origin xyz="0 -0.215 0"/>   <!-- FIXED: was -0.2397, now -0.295 (half of 0.590) -->
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <gazebo reference="right_wheel">
+    <visual>
+      <material>
+        <diffuse>0.0 0.0 0.0 1</diffuse>
+        <specular>0.1 0.1 0.1 1</specular>
+      </material>
+    </visual>
+    <mu1>0.8</mu1> <mu2>0.8</mu2>
+  </gazebo>
+
+  <!-- ================= left wheel ================= -->
+  <link name="left_wheel">
+    <visual>
+      <geometry>
+        <mesh filename="package://robot_kmutnb/meshes/L_Link.STL"/>
+      </geometry>
+      <material name="amr_blue"/>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
+      <geometry><cylinder radius="0.075" length="0.05"/></geometry>
+    </collision>
+    <xacro:inertial_cylinder mass="0.5" length="0.05" radius="0.075"/>
+  </link>
+
+  <joint name="left_wheel_joint" type="continuous">
+    <parent link="chassis_link"/>
+    <child link="left_wheel"/>
+    <origin xyz="0 0.215 0"/>    <!-- FIXED: was 0.2397, now 0.295 (half of 0.590) -->
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <gazebo reference="left_wheel">
+    <visual>
+      <material>
+        <diffuse>0.0 0.0 0.0 1</diffuse>
+        <specular>0.1 0.1 0.1 1</specular>
+      </material>
+    </visual>
+    <mu1>0.8</mu1> <mu2>0.8</mu2>
+  </gazebo>
+
+  <!-- ================= ros2_control ================= -->
+  <!--
+    Switches hardware plugin based on use_sim argument:
+      use_sim=true  → GazeboSimSystem (simulation)
+      use_sim=false → AMRSystemHardware (real robot, micro-ROS bridge)
+  -->
+  <ros2_control name="AMRSystem" type="system">
+    <hardware>
+      <xacro:if value="$(arg use_sim)">
+        <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      </xacro:if>
+      <xacro:unless value="$(arg use_sim)">
+        <plugin>amr_hardware/AMRSystemHardware</plugin>
+      </xacro:unless>
+    </hardware>
+
+    <joint name="left_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="velocity"/>
+      <state_interface name="position"/>
+    </joint>
+
+    <joint name="right_wheel_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="velocity"/>
+      <state_interface name="position"/>
+    </joint>
+  </ros2_control>
+
+  <!-- Gazebo plugin — only active in simulation -->
+  <xacro:if value="$(arg use_sim)">
+    <gazebo>
+      <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control"/>
+    </gazebo>
+  </xacro:if>
+
+</robot>

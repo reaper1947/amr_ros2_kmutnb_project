@@ -1,6 +1,6 @@
 # amr_ros2_kmutnb_project
 
-This repository provides a complete ROS2 simulation/Real environment for a differential drive mobile robot.
+This repository provides a complete ROS2 simulation environment for a differential drive mobile robot.
 
 The system demonstrates the full robotics pipeline including:
 
